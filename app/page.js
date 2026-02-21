@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer"; // Import for viewport detection
+import { BrowserProvider } from "ethers"; // Import ethers for robust wallet connection
 
 /**
  * Mind Vault - Full landing + interactive vault + neon web3 visuals
@@ -14,13 +15,51 @@ export default function Home() {
   const [vaults, setVaults] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const canvasRef = useRef(null);
+  const [ethereumProvider, setEthereumProvider] = useState(null);
 
-  // Intersection Observer hooks for animating sections
+  const getEthereum = () => {
+    if (typeof window === "undefined") return null;
+    const { ethereum } = window;
+    if (!ethereum) return null;
+    
+    // If multiple providers are injected (e.g. Coinbase + MetaMask), select MetaMask
+    if (ethereum.providers?.length) {
+      const metaMask = ethereum.providers.find((p) => p.isMetaMask);
+      if (metaMask) return metaMask;
+    }
+    
+    // Fallback to whatever is injected
+    return ethereum;
+  };
+
+  // Intersection Observer hooks
   const { ref: heroRef, inView: heroInView } = useInView({ triggerOnce: true, threshold: 0.2 });
   const { ref: featuresRef, inView: featuresInView } = useInView({ triggerOnce: true, threshold: 0.2 });
   const { ref: howRef, inView: howInView } = useInView({ triggerOnce: true, threshold: 0.2 });
   const { ref: vaultRef, inView: vaultInView } = useInView({ triggerOnce: true, threshold: 0.2 });
   const { ref: connectRef, inView: connectInView } = useInView({ triggerOnce: true, threshold: 0.2 });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const existing = getEthereum();
+    if (existing) {
+      setEthereumProvider(existing);
+    }
+    const handleAnnounce = (event) => {
+      const provider = event?.detail?.provider;
+      if (!provider) return;
+      if (provider.isMetaMask) {
+        setEthereumProvider(provider);
+        return;
+      }
+      setEthereumProvider((current) => current || provider);
+    };
+    window.addEventListener("eip6963:announceProvider", handleAnnounce);
+    window.dispatchEvent(new Event("eip6963:requestProvider"));
+    return () => {
+      window.removeEventListener("eip6963:announceProvider", handleAnnounce);
+    };
+  }, []);
 
   // -----------------------
   // Canvas: Spinning Purple Galaxy + Enhanced Particles
@@ -189,28 +228,92 @@ export default function Home() {
     })();
   }, [wallet]);
 
+  useEffect(() => {
+    const ethereum = ethereumProvider || getEthereum();
+    if (!ethereum) return;
+    const handleAccounts = (accounts) => {
+      if (accounts && accounts[0]) {
+        setWallet(accounts[0]);
+      } else {
+        setWallet("");
+        setVaults([]);
+      }
+    };
+    ethereum.request({ method: "eth_accounts" }).then(handleAccounts).catch(() => {});
+    if (ethereum.on) {
+      ethereum.on("accountsChanged", handleAccounts);
+    }
+    return () => {
+      if (ethereum.removeListener) {
+        ethereum.removeListener("accountsChanged", handleAccounts);
+      }
+    };
+  }, [ethereumProvider]);
+
   // -----------------------
-  // Connect wallet with MetaMask
+  // Connect wallet with MetaMask (using ethers.js)
   // -----------------------
   async function connectWallet() {
-    if (typeof window !== "undefined" && window.ethereum) {
-      try {
-        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-        if (accounts && accounts[0]) {
-          setWallet(accounts[0]);
-          await fetch("/api/connect-wallet", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ wallet: accounts[0] }),
-          });
-          return;
-        }
-      } catch (err) {
-        console.error("MetaMask error:", err);
-        alert("MetaMask connection failed. Check console for details.");
+    try {
+      const ethereum = getEthereum();
+
+      if (!ethereum) {
+        alert("MetaMask is not installed. Please install it first.");
+        return;
       }
-    } else {
-      alert("MetaMask is not installed. Please install it first.");
+
+      // 1. Try connecting with ethers.js (more robust)
+      try {
+        const provider = new BrowserProvider(ethereum);
+        const signer = await provider.getSigner();
+        const address = await signer.getAddress();
+        
+        setWallet(address);
+        
+        // Sync to backend
+        fetch("/api/connect-wallet", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ wallet: address }),
+        }).catch((err) => console.error("Wallet save error:", err));
+        
+        return; // Success!
+      } catch (ethersErr) {
+        console.warn("Ethers connection failed, trying fallback...", ethersErr);
+      }
+
+      // 2. Fallback: Direct window.ethereum request
+      // Force permission request if accounts are stuck
+      await ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }],
+      });
+      
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+      
+      if (!accounts || accounts.length === 0) {
+        throw new Error("No accounts returned.");
+      }
+
+      const account = accounts[0];
+      setWallet(account);
+
+      fetch("/api/connect-wallet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wallet: account }),
+      }).catch((err) => console.error("Wallet save error:", err));
+
+    } catch (err) {
+      console.error("MetaMask error:", err);
+      
+      if (err.code === 4001) {
+        alert("You rejected the connection request.");
+      } else if (err.code === -32002) {
+        alert("Check MetaMask! A connection request is already pending.");
+      } else {
+        alert(`Connection failed: ${err.message || "Unknown error"}`);
+      }
     }
   }
 
@@ -285,7 +388,7 @@ export default function Home() {
 
       <main className="relative z-10 min-h-screen">
         {/* Enhanced Navbar */}
-        <header className="bg-black/20 backdrop-blur-md fixed w-full top-0 z-30 border-b border-purple-500/20">
+        <header className="bg-black/20 backdrop-blur-md fixed w-full top-0 z-50 border-b border-purple-500/20">
           <nav className="max-w-7xl mx-auto flex items-center justify-between py-4 px-6 animate-fade-in">
             <div className="flex items-center gap-6">
               <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-purple-500 to-pink-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] animate-neon-flicker hover:scale-105 transition-transform">
