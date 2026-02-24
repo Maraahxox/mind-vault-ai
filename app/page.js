@@ -526,7 +526,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-6 text-center relative z-10">
             <div className="inline-block mb-6">
               <span className="text-sm font-semibold text-purple-300 bg-purple-500/10 px-4 py-2 rounded-full border border-purple-500/20 animate-pulse-glow">
-                🚀 Powered by AI & Web3
+                🚀 Powered by AI & Web3 
               </span>
             </div>
 
@@ -850,7 +850,7 @@ export default function Home() {
         {/* Footer */}
         <footer className="py-8 text-center text-gray-400 animate-fade-in">
           <div className="max-w-6xl mx-auto px-6">
-            © {new Date().getFullYear()} Mind Vault | Built with ❤️ by Maraah
+            © {new Date().getFullYear()} Mind Vault | Built by Zy
           </div>
         </footer>
       </main>
