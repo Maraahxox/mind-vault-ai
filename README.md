@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🧠 Mind Vault
 
-## Getting Started
+Mind Vault is an evolving AI identity protocol built on Ethereum.
 
-First, run the development server:
+It allows users to create a persistent **AI twin** that learns from their thoughts, memories, and knowledge over time — stored securely and bound to a **Soulbound NFT** on-chain.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+# 🚀 What Problem Does It Solve?
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+Today, your digital identity is scattered across platforms.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Your thoughts, knowledge, and memories disappear across social networks, notes apps, and devices.
 
-## Learn More
+Mind Vault solves this by creating:
 
-To learn more about Next.js, take a look at the following resources:
+• A persistent AI memory layer  
+• A decentralized identity system  
+• An AI twin that evolves with you  
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 🧬 How It Works
 
-## Deploy on Vercel
+1️⃣ User connects their wallet  
+2️⃣ A **Soulbound NFT** identity is minted  
+3️⃣ The user stores memories, ideas, and knowledge  
+4️⃣ An AI twin learns and evolves over time  
+5️⃣ The identity becomes a permanent on-chain record
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Because the NFT is **Soulbound**, it cannot be transferred or sold.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Your identity stays yours forever.
+
+---
+
+# ⚙️ Tech Stack
+
+Frontend  
+• Next.js  
+• TailwindCSS  
+
+Backend  
+• Next.js API Routes  
+• MongoDB Atlas  
+
+Blockchain  
+• Solidity Smart Contracts  
+• Hardhat Development Environment  
+• Soulbound NFT Contract  
+
+Infrastructure  
+• Vercel (deployment)  
+• GitHub (version control)
+
+---
+
+# 🖥 Live Demo
+
+https://mind-vault-tan.vercel.app
+
+---
+
+# 📦 Repository Structure
+
+
+---
+
+# 🔮 Future Vision
+
+Mind Vault aims to become the **AI identity layer of Web3**, enabling:
+
+• AI memory vaults  
+• decentralized digital identity  
+• personal AI companions  
+• permanent knowledge storage on-chain
+
+---
+
+# 👤 Author
+
+Zy
+Founder — Mind Vault
+
+---
+
+# 🌍 Built With Web3
+Ethereum • AI • Decentralized Identity
