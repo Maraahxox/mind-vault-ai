@@ -1,28 +1,32 @@
 import { NextResponse } from "next/server";
 import { MongoClient } from "mongodb";
 
-const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri);
+let cachedClient = null;
+async function getClient() {
+  if (!cachedClient) {
+    cachedClient = new MongoClient(process.env.MONGODB_URI);
+    await cachedClient.connect();
+  }
+  return cachedClient;
+}
 
 export async function POST(req) {
   try {
     const { wallet, vaultData } = await req.json();
+    if (!wallet || !vaultData?.trim())
+      return NextResponse.json({ success: false, message: "Missing fields" }, { status: 400 });
 
-    const db = client.db("mindvaultDB");
-    const collection = db.collection("vaults");
+    const client = await getClient();
+    const collection = client.db("mindvaultDB").collection("vaults");
 
     const result = await collection.insertOne({
-      wallet: wallet || null,
-      vaultData: vaultData || null,
+      wallet: wallet.toLowerCase(), // normalize so get/save always match
+      vaultData: vaultData.trim(),
       createdAt: new Date(),
     });
 
     return NextResponse.json({ success: true, id: result.insertedId });
   } catch (error) {
-    console.error("❌ API Error:", error);
-    return NextResponse.json(
-      { success: false, message: "Error saving vault", error: error.message },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
