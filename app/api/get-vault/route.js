@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { MongoClient } from "mongodb";
+import { decryptData } from "@/lib/encryption";
+import { rateLimit } from "@/lib/rateLimit";
+import { validateWallet } from "@/lib/validation";
 
-// Cached connection — critical for Next.js serverless
 let cachedClient = null;
 async function getClient() {
   if (!cachedClient) {
@@ -12,23 +14,60 @@ async function getClient() {
 }
 
 export async function GET(req) {
+  // Rate limiting
+  const rateLimitResult = rateLimit(req);
+  if (rateLimitResult.isRateLimited) {
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Too many requests. Please try again later.",
+        resetTime: rateLimitResult.resetTime,
+      },
+      { status: 429 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const wallet = searchParams.get("wallet")?.toLowerCase();
-    if (!wallet) return NextResponse.json({ success: false, message: "Wallet required" }, { status: 400 });
+
+    // Input validation
+    if (!wallet || !validateWallet(wallet)) {
+      return NextResponse.json(
+        { success: false, error: "Invalid wallet address" },
+        { status: 400 }
+      );
+    }
 
     const client = await getClient();
     const collection = client.db("mindvaultDB").collection("vaults");
 
-    // find ALL entries for this wallet, newest first
     const vault = await collection
       .find({ wallet })
       .sort({ createdAt: -1 })
       .limit(50)
       .toArray();
 
-    return NextResponse.json({ success: true, vault });
+    // Decrypt vault data before sending it to the client
+    const decryptedVault = vault.map((entry) => ({
+      ...entry,
+      vaultData: decryptData(entry.vaultData),
+    }));
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Vault retrieved successfully",
+        count: decryptedVault.length,
+        vault: decryptedVault,
+      },
+      { status: 200 }
+    );
   } catch (error) {
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    console.error("Error retrieving vault:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to retrieve vault data" },
+      { status: 500 }
+    );
   }
 }

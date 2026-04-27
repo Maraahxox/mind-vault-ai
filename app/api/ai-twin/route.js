@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { generateResponse } from "@/lib/aiTwin";
 import clientPromise from "@/lib/mongodb";
 import { rateLimit } from "@/lib/rateLimit";
 import { validateWallet } from "@/lib/validation";
@@ -29,28 +30,41 @@ export async function POST(req) {
     }
 
     const client = await clientPromise;
-    const db = client.db("mind-vault");
+    const db = client.db("mindvaultDB");
+    const collection = db.collection("vaults");
 
-    // Save wallet (unique per user)
-    const result = await db.collection("wallets").updateOne(
-      { wallet: wallet.toLowerCase() },
-      { $set: { wallet: wallet.toLowerCase(), connectedAt: new Date() } },
-      { upsert: true }
-    );
+    // Fetch user vault entries
+    const entries = await collection
+      .find({ wallet: wallet.toLowerCase() })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .toArray();
+
+    if (entries.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "No vault data found for this wallet" },
+        { status: 404 }
+      );
+    }
+
+    const userVaultEntries = entries.map((entry) => entry.vaultData);
+
+    // Generate AI response
+    const aiResponse = await generateResponse(userVaultEntries);
 
     return NextResponse.json(
       {
         success: true,
-        message: "Wallet connected successfully",
-        wallet: wallet.toLowerCase(),
-        upserted: result.upsertedCount > 0,
+        message: "AI response generated successfully",
+        response: aiResponse,
+        entriesUsed: entries.length,
       },
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error connecting wallet:", error);
+    console.error("Error in AI Twin API:", error);
     return NextResponse.json(
-      { success: false, error: "Failed to connect wallet" },
+      { success: false, error: "Failed to generate AI response" },
       { status: 500 }
     );
   }

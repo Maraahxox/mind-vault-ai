@@ -62,12 +62,16 @@ export async function GET(req,  { params }) {
     }
      
     // Dynamic metadata generated per request
-// Enables evolving NFTs without reminting
+    // Enables evolving NFTs without reminting
+    const imageURL = process.env.IPFS_IMAGE_CID && process.env.PINATA_GATEWAY
+      ? `${process.env.PINATA_GATEWAY}/ipfs/${process.env.IPFS_IMAGE_CID}`
+      : `https://mindvault.app/images/${tokenId}.png`;
+
     const metadata = {
       name: `MindVault Soulbound #${tokenId}`,
       description: "Your eternal AI identity stored inside MindVault.",
-      image: `https://mindvault.app/images/${tokenId}.png`,
-      external_url: `https://mindvault.app/vault/${tokenId}`,
+      image: imageURL,
+      external_url: `https://mind-vault-tan.vercel.app/vault/${tokenId}`,
       attributes: [
         { trait_type: "AI Level", value: experienceLevel },
         { trait_type: "Memory Capacity", value: memoryCapacity },

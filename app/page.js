@@ -356,6 +356,34 @@ export default function Home() {
     }
   }
 
+  const handleMint = async () => {
+    try {
+      if (!ethereumProvider) {
+        alert("Ethereum provider not found. Please install MetaMask.");
+        return;
+      }
+
+      const provider = new BrowserProvider(ethereumProvider);
+      const signer = await provider.getSigner();
+
+      const contractAddress = "0x071e36df9cD6293e69F8bB19be17557c00839E32";
+      const artifact = await fetch("/artifacts/contracts/SoulboundNFT_v1_1.sol/SoulboundNFT_v1_1.json").then((res) => res.json());
+
+      const SoulboundNFT = new ethers.Contract(contractAddress, artifact.abi, signer);
+
+      const tx = await SoulboundNFT.mintSoulbound();
+      console.log("Transaction sent:", tx.hash);
+
+      const receipt = await tx.wait();
+      console.log("Minted! Tx mined in block:", receipt.blockNumber);
+
+      alert("Minting successful! Token ID: " + (await SoulboundNFT.totalSupply()).toString());
+    } catch (error) {
+      console.error("Minting failed:", error);
+      alert("Minting failed: " + error.message);
+    }
+  };
+
   function formatDate(iso) {
     try {
       return new Date(iso).toLocaleString("en-US", {

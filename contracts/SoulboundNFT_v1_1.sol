@@ -15,6 +15,7 @@ contract SoulboundNFT_v1_1 is ERC721, Ownable {
 
     uint256 private _tokenIds;
     uint256 public immutable MAX_SUPPLY;
+    uint256 private _burnedCount;
 
     // Base URI for token metadata
     string private _baseTokenURI;
@@ -73,6 +74,7 @@ contract SoulboundNFT_v1_1 is ERC721, Ownable {
         require(!isBurned[tokenId], "Token already burned");
 
         isBurned[tokenId] = true;
+        _burnedCount++;
         hasMinted[msg.sender] = false; // Allow re-minting after burn
 
         _burn(tokenId);
@@ -97,15 +99,10 @@ contract SoulboundNFT_v1_1 is ERC721, Ownable {
 
     /**
      * @dev Get active supply (total minted minus burned)
+     * Time complexity: O(1) - uses counter instead of loop
      */
     function activeSupply() external view returns (uint256) {
-        uint256 burnedCount = 0;
-        for (uint256 i = 1; i <= _tokenIds; i++) {
-            if (isBurned[i]) {
-                burnedCount++;
-            }
-        }
-        return _tokenIds - burnedCount;
+        return _tokenIds - _burnedCount;
     }
 
     /**
