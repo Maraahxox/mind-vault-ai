@@ -1,17 +1,9 @@
 import { NextResponse } from "next/server";
-import { MongoClient } from "mongodb";
 import { encryptData } from "@/lib/encryption";
 import { rateLimit } from "@/lib/rateLimit";
 import { validateWallet, validateVaultData } from "@/lib/validation";
-
-let cachedClient = null;
-async function getClient() {
-  if (!cachedClient) {
-    cachedClient = new MongoClient(process.env.MONGODB_URI);
-    await cachedClient.connect();
-  }
-  return cachedClient;
-}
+import clientPromise from "@/lib/mongodb";
+import { generateEmbedding } from "@/lib/embeddings";
 
 export async function POST(req) {
   // Rate limiting
@@ -45,22 +37,39 @@ export async function POST(req) {
       );
     }
 
-    const client = await getClient();
+    const client = await clientPromise;
     const collection = client.db("mindvaultDB").collection("vaults");
 
     const encryptedData = encryptData(vaultData);
 
-    const result = await collection.insertOne({
+    // Generate embedding for vector search (RAG)
+    let embedding = null;
+    try {
+      embedding = await generateEmbedding(vaultData);
+    } catch (embeddingError) {
+      console.warn("Failed to generate embedding, continuing without it:", embeddingError.message);
+      // Continue saving without embedding - it's optional for compatibility
+    }
+
+    const documentToInsert = {
       wallet: wallet.toLowerCase(),
       vaultData: encryptedData,
       createdAt: new Date(),
-    });
+    };
+
+    // Add embedding if successfully generated
+    if (embedding) {
+      documentToInsert.embedding = embedding;
+    }
+
+    const result = await collection.insertOne(documentToInsert);
 
     return NextResponse.json(
       {
         success: true,
         message: "Vault data saved successfully",
         id: result.insertedId,
+        embeddingStored: !!embedding,
       },
       { status: 201 }
     );

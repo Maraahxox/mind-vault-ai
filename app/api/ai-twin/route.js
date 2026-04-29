@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
-import { generateResponse } from "@/lib/aiTwin";
 import clientPromise from "@/lib/mongodb";
 import { rateLimit } from "@/lib/rateLimit";
 import { validateWallet } from "@/lib/validation";
+import { generateEmbedding, vectorSearch, getRecentVaultEntries } from "@/lib/embeddings";
+import { generateRAGResponse } from "@/lib/aiTwin";
+import { decryptData } from "@/lib/encryption";
 
 export async function POST(req) {
   // Rate limiting
@@ -19,7 +21,7 @@ export async function POST(req) {
   }
 
   try {
-    const { wallet } = await req.json();
+    const { wallet, message } = await req.json();
 
     // Input validation
     if (!wallet || !validateWallet(wallet)) {
@@ -29,35 +31,70 @@ export async function POST(req) {
       );
     }
 
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
+      return NextResponse.json(
+        { success: false, error: "Message is required and must be non-empty" },
+        { status: 400 }
+      );
+    }
+
     const client = await clientPromise;
     const db = client.db("mindvaultDB");
     const collection = db.collection("vaults");
 
-    // Fetch user vault entries
-    const entries = await collection
-      .find({ wallet: wallet.toLowerCase() })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray();
+    let contextEntries = [];
+    let usingVectorSearch = false;
 
-    if (entries.length === 0) {
+    try {
+      // Step 1: Generate embedding for user's message
+      const messageEmbedding = await generateEmbedding(message);
+
+      // Step 2: Try vector search first
+      try {
+        contextEntries = await vectorSearch(collection, messageEmbedding, wallet, 5);
+        usingVectorSearch = true;
+        console.log(`Found ${contextEntries.length} entries via vector search`);
+      } catch (vectorSearchError) {
+        console.warn("Vector search failed, falling back to chronological retrieval:", vectorSearchError.message);
+        // Fallback to most recent entries
+        contextEntries = await getRecentVaultEntries(collection, wallet, 5);
+      }
+    } catch (embeddingError) {
+      console.warn("Embedding generation failed, using chronological retrieval:", embeddingError.message);
+      // Fallback to most recent entries if embedding fails
+      contextEntries = await getRecentVaultEntries(collection, wallet, 5);
+    }
+
+    if (contextEntries.length === 0) {
       return NextResponse.json(
         { success: false, error: "No vault data found for this wallet" },
         { status: 404 }
       );
     }
 
-    const userVaultEntries = entries.map((entry) => entry.vaultData);
+    // Step 3: Decrypt vault data for context (only decrypt vaultData field)
+    const decryptedContext = contextEntries.map((entry) => {
+      try {
+        return {
+          ...entry,
+          vaultData: decryptData(entry.vaultData),
+        };
+      } catch (decryptError) {
+        console.warn("Could not decrypt entry, using encrypted data:", decryptError.message);
+        return entry;
+      }
+    });
 
-    // Generate AI response
-    const aiResponse = await generateResponse(userVaultEntries);
+    // Step 4: Generate AI response using RAG
+    const aiResponse = await generateRAGResponse(message, decryptedContext);
 
     return NextResponse.json(
       {
         success: true,
         message: "AI response generated successfully",
         response: aiResponse,
-        entriesUsed: entries.length,
+        entriesUsed: contextEntries.length,
+        searchMethod: usingVectorSearch ? "vector_search" : "chronological",
       },
       { status: 200 }
     );
