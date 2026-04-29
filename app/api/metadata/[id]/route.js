@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { MongoClient } from "mongodb";
 import { ethers } from "ethers";
+import { DEMO_WALLET, demoNFTMetadata } from "@/lib/demoData";
 
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri);
@@ -14,6 +15,21 @@ export async function GET(req,  { params }) {
         { error: "Token ID is required" },
         { status: 400 }
       );
+    }
+
+    // Demo mode: return demo metadata for demo wallet
+    if (tokenId === "1") {
+      // Assume token #1 is for demo
+      const metadata = {
+        name: demoNFTMetadata.name,
+        description: demoNFTMetadata.description,
+        image: demoNFTMetadata.image,
+        external_url: demoNFTMetadata.external_url,
+        attributes: demoNFTMetadata.attributes,
+      };
+      return new Response(JSON.stringify(metadata), {
+        headers: { "Content-Type": "application/json" }
+      });
     }
 
     let wallet = null;

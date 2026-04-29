@@ -1,13 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useInView } from "react-intersection-observer"; // Import for viewport detection
-import { BrowserProvider } from "ethers"; // Import ethers for robust wallet connection
-
-/**
- * Mind Vault - Full landing + interactive vault + neon web3 visuals
- * With MetaMask integration
- */
+import { useInView } from "react-intersection-observer";
+import { BrowserProvider } from "ethers";
+import { DEMO_WALLET, demoVaultEntries, demoAIResponses, demoAnalytics } from "@/lib/demoData";
 
 export default function Home() {
   const [wallet, setWallet] = useState("");
@@ -16,6 +12,12 @@ export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const canvasRef = useRef(null);
   const [ethereumProvider, setEthereumProvider] = useState(null);
+  
+  // New state for Features 2, 3, 4
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(1);
+  const [demoMode, setDemoMode] = useState(false);
+  const [analytics, setAnalytics] = useState({ walletsConnected: 0, memoriesStored: 0, aiTwinQueries: 0, soulboundNFTsMinted: 0 });
 
   const getEthereum = () => {
     if (typeof window === "undefined") return null;
@@ -205,11 +207,69 @@ export default function Home() {
     };
   }, []);
 
+  // Feature 2: Onboarding Modal - Initialize from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onboardingComplete = localStorage.getItem("mindVault_onboardingComplete");
+    if (!onboardingComplete) {
+      setShowOnboarding(true);
+    }
+  }, []);
+
+  // Feature 3: Demo Mode - Check for demo flag in URL or localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "true") {
+      setDemoMode(true);
+      setWallet(DEMO_WALLET);
+      localStorage.setItem("mindVault_demoMode", "true");
+    } else {
+      const savedDemoMode = localStorage.getItem("mindVault_demoMode");
+      if (savedDemoMode === "true") {
+        setDemoMode(true);
+        setWallet(DEMO_WALLET);
+      }
+    }
+  }, []);
+
+  // Feature 4: Analytics - Fetch platform stats and set up auto-refresh
+  useEffect(() => {
+    const fetchAnalytics = async () => {
+      try {
+        const res = await fetch("/api/analytics");
+        if (res.ok) {
+          const data = await res.json();
+          setAnalytics(data);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch analytics:", err);
+      }
+    };
+    
+    fetchAnalytics();
+    const interval = setInterval(fetchAnalytics, 30000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
   // -----------------------
   // Backend integration (save & fetch)
   // -----------------------
   useEffect(() => {
     if (!wallet) return;
+    
+    // Demo mode: load demo vault entries
+    if (demoMode && wallet === DEMO_WALLET) {
+      const demoEntries = demoVaultEntries.map((entry) => ({
+        _id: `demo_${Math.random()}`,
+        wallet: DEMO_WALLET,
+        vaultData: entry.vaultData,
+        createdAt: entry.createdAt,
+      }));
+      setVaults(demoEntries);
+      return;
+    }
+
     (async () => {
       try {
         const res = await fetch(`/api/get-vault?wallet=${encodeURIComponent(wallet)}`);
@@ -226,7 +286,7 @@ export default function Home() {
         console.error("Fetch vault error:", err);
       }
     })();
-  }, [wallet]);
+  }, [wallet, demoMode]);
 
   useEffect(() => {
     const ethereum = ethereumProvider || getEthereum();
@@ -332,6 +392,19 @@ export default function Home() {
     }
 
     try {
+      // Demo mode: add to local state without API call
+      if (demoMode && wallet === DEMO_WALLET) {
+        const newEntry = {
+          _id: `demo_${Date.now()}`,
+          wallet,
+          vaultData,
+          createdAt: new Date().toISOString(),
+        };
+        setVaults((s) => [newEntry, ...s]);
+        setVaultData("");
+        return;
+      }
+
       const res = await fetch("/api/save-vault", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -597,22 +670,49 @@ export default function Home() {
                 </span>
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/10 to-teal-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               </button>
+
+              {!demoMode && (
+                <button
+                  onClick={() => {
+                    setDemoMode(true);
+                    setWallet(DEMO_WALLET);
+                    localStorage.setItem("mindVault_demoMode", "true");
+                    setShowOnboarding(false);
+                  }}
+                  className="group relative px-8 py-4 bg-transparent border-2 border-violet-400 hover:border-violet-300 rounded-2xl text-violet-300 hover:text-violet-200 font-bold text-lg transition-all duration-300 hover:scale-105 overflow-hidden"
+                >
+                  <span className="relative z-10 flex items-center gap-3">
+                    <span className="text-2xl">🎭</span>
+                    Try Demo
+                  </span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-400/10 to-purple-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                </button>
+              )}
             </div>
 
-            {/* Stats */}
+            {/* Demo Mode Banner */}
+            {demoMode && (
+              <div className="mb-8 bg-gradient-to-r from-violet-900/40 to-purple-900/40 border-2 border-violet-500/50 rounded-xl px-6 py-3 flex items-center justify-center gap-3 animate-pulse">
+                <span className="text-2xl">🎭</span>
+                <span className="text-gray-200">Demo Mode — <span className="text-violet-300">Connect your wallet to save real memories</span></span>
+              </div>
+            )}
+
+            {/* Analytics Stats Bar */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
               {[
-                { number: "∞", label: "Memories Stored", color: "from-purple-400 to-pink-400" },
-                { number: "100%", label: "Decentralized", color: "from-emerald-400 to-green-400" },
-                { number: "AI", label: "Powered Learning", color: "from-blue-400 to-purple-400" },
+                { icon: "🧠", number: analytics.memoriesStored || 0, label: "Memories Stored", color: "from-purple-400 to-pink-400" },
+                { icon: "🤖", number: analytics.aiTwinQueries || 0, label: "AI Twin Queries", color: "from-blue-400 to-cyan-400" },
+                { icon: "👥", number: analytics.walletsConnected || 0, label: "Users Connected", color: "from-emerald-400 to-green-400" },
               ].map((stat, index) => (
                 <div
                   key={index}
                   className={`text-center p-6 rounded-2xl bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-sm border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300 animate-fade-in`}
                   style={{ animationDelay: `${index * 200}ms` }}
                 >
+                  <div className="text-2xl mb-2">{stat.icon}</div>
                   <div className={`text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r ${stat.color} mb-2 animate-pulse-glow`}>
-                    {stat.number}
+                    {stat.number.toLocaleString()}
                   </div>
                   <div className="text-gray-300 font-semibold">{stat.label}</div>
                 </div>
@@ -882,6 +982,115 @@ export default function Home() {
           </div>
         </footer>
       </main>
+
+      {/* Feature 2: Onboarding Modal */}
+      {showOnboarding && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-[999] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-gradient-to-br from-gray-900 to-gray-950 border-2 border-purple-500/50 rounded-3xl max-w-2xl w-full p-8 md:p-12 shadow-2xl animate-scale-up">
+            {/* Progress Indicator */}
+            <div className="flex gap-2 mb-8 justify-center">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    step <= onboardingStep
+                      ? "bg-gradient-to-r from-purple-400 to-pink-400 w-8"
+                      : "bg-gray-700 w-2"
+                  }`}
+                />
+              ))}
+            </div>
+
+            {/* Step 1: Connect Wallet */}
+            {onboardingStep === 1 && (
+              <div className="text-center animate-fade-in">
+                <div className="text-6xl mb-4 animate-bounce-slow">🔗</div>
+                <h3 className="text-3xl font-bold text-white mb-4">Connect Your Wallet</h3>
+                <p className="text-gray-300 mb-8 text-lg">
+                  Connect MetaMask to access your personal Mind Vault and start storing your memories on the blockchain.
+                </p>
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => {
+                      connectWallet();
+                      setTimeout(() => setOnboardingStep(2), 500);
+                    }}
+                    className="px-8 py-3 bg-gradient-to-r from-emerald-400 to-green-500 text-black font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
+                  >
+                    Connect MetaMask
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowOnboarding(false);
+                      localStorage.setItem("mindVault_onboardingComplete", "true");
+                    }}
+                    className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all duration-300"
+                  >
+                    Skip
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 2: Mint NFT */}
+            {onboardingStep === 2 && (
+              <div className="text-center animate-fade-in">
+                <div className="text-6xl mb-4 animate-bounce-slow">🎨</div>
+                <h3 className="text-3xl font-bold text-white mb-4">Mint Your Soulbound Identity</h3>
+                <p className="text-gray-300 mb-8 text-lg">
+                  Mint a unique soulbound NFT that represents your AI Twin. This NFT is permanently bound to your identity.
+                </p>
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => {
+                      handleMint();
+                      setTimeout(() => setOnboardingStep(3), 500);
+                    }}
+                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
+                  >
+                    Mint NFT
+                  </button>
+                  <button
+                    onClick={() => setOnboardingStep(1)}
+                    className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all duration-300"
+                  >
+                    Back
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Save First Memory */}
+            {onboardingStep === 3 && (
+              <div className="text-center animate-fade-in">
+                <div className="text-6xl mb-4 animate-bounce-slow">🧠</div>
+                <h3 className="text-3xl font-bold text-white mb-4">Add Your First Memory</h3>
+                <p className="text-gray-300 mb-8 text-lg">
+                  Share your first thought, idea, or memory with your AI Twin. It will be encrypted and stored in your vault.
+                </p>
+                <div className="flex gap-4 justify-center">
+                  <button
+                    onClick={() => {
+                      setShowOnboarding(false);
+                      localStorage.setItem("mindVault_onboardingComplete", "true");
+                      document.getElementById("vault-input")?.focus();
+                    }}
+                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
+                  >
+                    Get Started
+                  </button>
+                  <button
+                    onClick={() => setOnboardingStep(2)}
+                    className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all duration-300"
+                  >
+                    Back
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }

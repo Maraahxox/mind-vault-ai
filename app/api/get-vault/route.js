@@ -3,6 +3,7 @@ import { MongoClient } from "mongodb";
 import { decryptData } from "@/lib/encryption";
 import { rateLimit } from "@/lib/rateLimit";
 import { validateWallet } from "@/lib/validation";
+import { DEMO_WALLET, demoVaultEntries } from "@/lib/demoData";
 
 let cachedClient = null;
 async function getClient() {
@@ -36,6 +37,24 @@ export async function GET(req) {
       return NextResponse.json(
         { success: false, error: "Invalid wallet address" },
         { status: 400 }
+      );
+    }
+
+    // Demo mode: return demo vault entries
+    if (wallet === DEMO_WALLET.toLowerCase()) {
+      const decryptedVault = demoVaultEntries.map((entry) => ({
+        _id: `demo_${Math.random()}`,
+        wallet: DEMO_WALLET,
+        vaultData: entry.vaultData,
+        createdAt: entry.createdAt,
+      }));
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Demo vault retrieved",
+          vault: decryptedVault,
+        },
+        { status: 200 }
       );
     }
 

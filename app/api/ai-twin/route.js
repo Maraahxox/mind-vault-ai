@@ -5,6 +5,7 @@ import { validateWallet } from "@/lib/validation";
 import { generateEmbedding, vectorSearch, getRecentVaultEntries } from "@/lib/embeddings";
 import { generateRAGResponse } from "@/lib/aiTwin";
 import { decryptData } from "@/lib/encryption";
+import { DEMO_WALLET, demoAIResponses } from "@/lib/demoData";
 
 export async function POST(req) {
   // Rate limiting
@@ -35,6 +36,21 @@ export async function POST(req) {
       return NextResponse.json(
         { success: false, error: "Message is required and must be non-empty" },
         { status: 400 }
+      );
+    }
+
+    // Demo mode: return pre-generated response
+    if (wallet.toLowerCase() === DEMO_WALLET.toLowerCase()) {
+      const demoResponse = demoAIResponses[message] || demoAIResponses["default"] || "That's an interesting thought. Let me think about that from your perspective...";
+      return NextResponse.json(
+        {
+          success: true,
+          message: "AI response generated successfully (demo mode)",
+          response: demoResponse,
+          entriesUsed: 5,
+          searchMethod: "demo_mode",
+        },
+        { status: 200 }
       );
     }
 
@@ -87,6 +103,19 @@ export async function POST(req) {
 
     // Step 4: Generate AI response using RAG
     const aiResponse = await generateRAGResponse(message, decryptedContext);
+
+    // Step 5: Increment analytics counter
+    try {
+      const statsCollection = db.collection("stats");
+      await statsCollection.updateOne(
+        { _id: "platform_stats" },
+        { $inc: { aiTwinQueries: 1 } },
+        { upsert: true }
+      );
+    } catch (statsError) {
+      console.warn("Failed to increment analytics counter:", statsError.message);
+      // Don't fail the request if analytics fails
+    }
 
     return NextResponse.json(
       {

@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/rateLimit";
 import { validateWallet, validateVaultData } from "@/lib/validation";
 import clientPromise from "@/lib/mongodb";
 import { generateEmbedding } from "@/lib/embeddings";
+import { DEMO_WALLET } from "@/lib/demoData";
 
 export async function POST(req) {
   // Rate limiting
@@ -34,6 +35,19 @@ export async function POST(req) {
       return NextResponse.json(
         { success: false, error: "Invalid or missing vault data" },
         { status: 400 }
+      );
+    }
+
+    // Demo mode: don't save to database
+    if (wallet.toLowerCase() === DEMO_WALLET.toLowerCase()) {
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Demo mode: data not saved to database",
+          id: `demo_${Date.now()}`,
+          embeddingStored: false,
+        },
+        { status: 201 }
       );
     }
 
