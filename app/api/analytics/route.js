@@ -59,18 +59,4 @@ export async function GET(req) {
       }
     );
   }
-  } catch (error) {
-    console.error("Error fetching analytics:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch analytics",
-        walletsConnected: 0,
-        memoriesStored: 0,
-        aiTwinQueries: 0,
-        soulboundNFTsMinted: 0,
-      },
-      { status: 500 }
-    );
-  }
 }
