@@ -1037,10 +1037,23 @@ export default function Home() {
               <div className="text-center animate-fade-in">
                 <div className="text-6xl mb-4 animate-bounce-slow">🎨</div>
                 <h3 className="text-3xl font-bold text-white mb-4">Mint Your Soulbound Identity</h3>
-                <p className="text-gray-300 mb-8 text-lg">
+                <p className="text-gray-300 mb-6 text-lg">
                   Mint a unique soulbound NFT that represents your AI Twin. This NFT is permanently bound to your identity.
                 </p>
-                <div className="flex gap-4 justify-center">
+                
+                {/* Green badge */}
+                <div className="mb-4 inline-block">
+                  <div className="bg-gradient-to-r from-emerald-400/20 to-green-400/20 border border-emerald-400/50 rounded-full px-4 py-2">
+                    <span className="text-emerald-300 font-semibold">✨ Currently FREE on Sepolia Testnet</span>
+                  </div>
+                </div>
+                
+                {/* Grey subtext */}
+                <div className="text-gray-500 text-sm mb-8">
+                  On mainnet launch — one-time gas fee only, yours forever
+                </div>
+
+                <div className="flex gap-4 justify-center mb-6">
                   <button
                     onClick={() => {
                       handleMint();
@@ -1057,6 +1070,11 @@ export default function Home() {
                     Back
                   </button>
                 </div>
+
+                {/* Disclaimer */}
+                <p className="text-xs text-gray-400 max-w-md mx-auto">
+                  Your Soulbound NFT is non-transferable and permanently bound to your wallet. No subscriptions. No renewals. Ever.
+                </p>
               </div>
             )}
 
