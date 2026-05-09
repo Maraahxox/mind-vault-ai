@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useInView } from "react-intersection-observer";
-import { BrowserProvider } from "ethers";
+import { BrowserProvider, Contract } from "ethers";
 import { DEMO_WALLET, demoVaultEntries, demoAIResponses, demoAnalytics } from "@/lib/demoData";
+import SoulboundNFTABI from "@/artifacts/contracts/SoulboundNFT_v1_1.sol/SoulboundNFT_v1_1.json";
 
 export default function Home() {
   const [wallet, setWallet] = useState("");
@@ -440,20 +441,24 @@ export default function Home() {
       const signer = await provider.getSigner();
 
       const contractAddress = "0x071e36df9cD6293e69F8bB19be17557c00839E32";
-      const artifact = await fetch("/artifacts/contracts/SoulboundNFT_v1_1.sol/SoulboundNFT_v1_1.json").then((res) => res.json());
+      
+      // Use imported ABI directly instead of fetching
+      const SoulboundNFT = new Contract(contractAddress, SoulboundNFTABI.abi, signer);
 
-      const SoulboundNFT = new ethers.Contract(contractAddress, artifact.abi, signer);
-
+      console.log("Initiating mint transaction...");
       const tx = await SoulboundNFT.mintSoulbound();
       console.log("Transaction sent:", tx.hash);
 
+      alert("Transaction submitted! Waiting for confirmation...");
       const receipt = await tx.wait();
       console.log("Minted! Tx mined in block:", receipt.blockNumber);
 
-      alert("Minting successful! Token ID: " + (await SoulboundNFT.totalSupply()).toString());
+      // Get the total supply (or extract token ID from receipt events)
+      const totalSupply = await SoulboundNFT.totalSupply();
+      alert(`✅ Minting successful! Your Soulbound NFT is now bound to your wallet. Total minted: ${totalSupply.toString()}`);
     } catch (error) {
       console.error("Minting failed:", error);
-      alert("Minting failed: " + error.message);
+      alert(`❌ Minting failed: ${error.message}`);
     }
   };
 
@@ -508,6 +513,9 @@ export default function Home() {
                 <li><a href="#connect" className="hover:text-purple-300 transition-all duration-300 hover:scale-110 relative group">Connect
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 transition-all duration-300 group-hover:w-full"></span>
                 </a></li>
+                <li><button onClick={() => { setShowOnboarding(true); setOnboardingStep(1); }} className="hover:text-violet-300 transition-all duration-300 hover:scale-110 relative group cursor-pointer">Show Onboarding
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-violet-400 to-purple-400 transition-all duration-300 group-hover:w-full"></span>
+                </button></li>
               </ul>
             </div>
 
@@ -576,10 +584,22 @@ export default function Home() {
                     <a
                       href="#connect"
                       onClick={() => setMobileMenuOpen(false)}
-                      className="block py-3 hover:text-purple-300 transition-all duration-300"
+                      className="block py-3 hover:text-purple-300 transition-all duration-300 border-b border-gray-700/50"
                     >
                       Connect
                     </a>
+                  </li>
+                  <li>
+                    <button
+                      onClick={() => {
+                        setShowOnboarding(true);
+                        setOnboardingStep(1);
+                        setMobileMenuOpen(false);
+                      }}
+                      className="block py-3 hover:text-violet-300 transition-all duration-300 w-full text-left"
+                    >
+                      Show Onboarding
+                    </button>
                   </li>
                 </ul>
                 <div className="mt-4 pt-4 border-t border-gray-700/50">
@@ -978,6 +998,21 @@ export default function Home() {
         {/* Footer */}
         <footer className="py-8 text-center text-gray-400 animate-fade-in">
           <div className="max-w-6xl mx-auto px-6">
+            <div className="mb-3 space-x-3">
+              <button
+                onClick={() => {
+                  setShowOnboarding(true);
+                  setOnboardingStep(1);
+                }}
+                className="text-violet-400 hover:text-violet-300 transition-all duration-300 text-sm underline"
+              >
+                Show Onboarding
+              </button>
+              <span className="text-gray-600">|</span>
+              <a href="/api-docs" className="text-violet-400 hover:text-violet-300 transition-all duration-300 text-sm underline">
+                API Docs
+              </a>
+            </div>
             © {new Date().getFullYear()} Mind Vault | Built by Zy
           </div>
         </footer>
