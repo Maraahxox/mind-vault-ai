@@ -430,6 +430,93 @@ export default function Home() {
     }
   }
 
+  const parseContractError = (error) => {
+    const errorMessage = error.message || error.toString();
+    const errorReason = error.reason || "";
+
+    // Check for specific error messages
+    if (
+      errorMessage.includes("You already own a Soulbound NFT") ||
+      errorReason.includes("You already own a Soulbound NFT")
+    ) {
+      return {
+        type: "already_minted",
+        title: "✅ You Already Have a Soulbound Identity!",
+        message:
+          "Your AI Twin is permanently minted and bound to your wallet. Each wallet can only have one Soulbound NFT.",
+        action: "View on Etherscan",
+        txHash: error.receipt?.transactionHash || null,
+      };
+    }
+
+    // User rejected transaction
+    if (
+      errorMessage.includes("User denied") ||
+      errorMessage.includes("user rejected") ||
+      errorMessage.includes("User rejected")
+    ) {
+      return {
+        type: "user_rejected",
+        title: "Mint Cancelled",
+        message:
+          "You cancelled the transaction. You can mint your Soulbound NFT anytime from your vault.",
+        action: null,
+      };
+    }
+
+    // Insufficient gas
+    if (
+      errorMessage.includes("insufficient funds") ||
+      errorMessage.includes("out of gas") ||
+      errorMessage.includes("exceeds gas limit")
+    ) {
+      return {
+        type: "insufficient_gas",
+        title: "❌ Need ETH for Gas",
+        message:
+          "You need Sepolia ETH to cover the minting transaction. Get free Sepolia ETH from the Sepolia Faucet (sepolia-faucet.pk910.de or faucet.quicknode.com).",
+        action: "Get Sepolia ETH",
+        faucetUrl: "https://www.alchemy.com/faucets/ethereum-sepolia",
+      };
+    }
+
+    // Generic error fallback
+    return {
+      type: "unknown_error",
+      title: "❌ Mint Failed",
+      message:
+        "Something went wrong while minting. Please try again or contact support. Error: " +
+        errorMessage.substring(0, 100),
+      action: null,
+    };
+  };
+
+  const showMintResultModal = (result) => {
+    const width = 500;
+    const height = 300;
+    const html = `
+      <div style="position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;" id="mint-modal">
+        <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid #7c3aed; border-radius: 16px; padding: 32px; max-width: ${width}px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+          <h2 style="color: white; margin: 0 0 16px 0; font-size: 20px; font-weight: 600;">${result.title}</h2>
+          <p style="color: #d1d5db; margin: 0 0 24px 0; line-height: 1.5; font-size: 14px;">${result.message}</p>
+          <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            <button onclick="document.getElementById('mint-modal').remove()" style="padding: 10px 20px; background: #374151; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s;">
+              Close
+            </button>
+            ${
+              result.txHash
+                ? `<a href="https://sepolia.etherscan.io/tx/${result.txHash}" target="_blank" style="padding: 10px 20px; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; text-decoration: none; display: inline-block; transition: all 0.2s;" onclick="document.getElementById('mint-modal').remove()">${result.action}</a>`
+                : result.faucetUrl
+                  ? `<a href="${result.faucetUrl}" target="_blank" style="padding: 10px 20px; background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; text-decoration: none; display: inline-block; transition: all 0.2s;" onclick="document.getElementById('mint-modal').remove()">${result.action}</a>`
+                  : ""
+            }
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML("beforeend", html);
+  };
+
   const handleMint = async () => {
     try {
       if (!ethereumProvider) {
@@ -441,7 +528,7 @@ export default function Home() {
       const signer = await provider.getSigner();
 
       const contractAddress = "0x071e36df9cD6293e69F8bB19be17557c00839E32";
-      
+
       // Use imported ABI directly instead of fetching
       const SoulboundNFT = new Contract(contractAddress, SoulboundNFTABI.abi, signer);
 
@@ -453,12 +540,19 @@ export default function Home() {
       const receipt = await tx.wait();
       console.log("Minted! Tx mined in block:", receipt.blockNumber);
 
-      // Get the total supply (or extract token ID from receipt events)
+      // Get the total supply
       const totalSupply = await SoulboundNFT.totalSupply();
-      alert(`✅ Minting successful! Your Soulbound NFT is now bound to your wallet. Total minted: ${totalSupply.toString()}`);
+      showMintResultModal({
+        type: "success",
+        title: "🎉 Success!",
+        message: `Your Soulbound NFT has been minted! Your AI Twin is now permanently bound to your wallet. Total minted: ${totalSupply.toString()}`,
+        action: "View on Etherscan",
+        txHash: receipt.transactionHash,
+      });
     } catch (error) {
       console.error("Minting failed:", error);
-      alert(`❌ Minting failed: ${error.message}`);
+      const parsedError = parseContractError(error);
+      showMintResultModal(parsedError);
     }
   };
 
