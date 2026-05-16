@@ -19,6 +19,7 @@ export default function Home() {
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [demoMode, setDemoMode] = useState(false);
   const [analytics, setAnalytics] = useState({ walletsConnected: 0, memoriesStored: 0, aiTwinQueries: 0, soulboundNFTsMinted: 0 });
+  const [alreadyMinted, setAlreadyMinted] = useState(false);
 
   const getEthereum = () => {
     if (typeof window === "undefined") return null;
@@ -314,6 +315,23 @@ export default function Home() {
   // -----------------------
   // Connect wallet with MetaMask (using ethers.js)
   // -----------------------
+  async function checkMintStatus(address) {
+    try {
+      const ethereum = getEthereum();
+      if (!ethereum) return;
+
+      const provider = new BrowserProvider(ethereum);
+      const contractAddress = "0x071e36df9cD6293e69F8bB19be17557c00839E32";
+      const SoulboundNFT = new Contract(contractAddress, SoulboundNFTABI.abi, provider);
+
+      const hasMinted = await SoulboundNFT.hasMinted(address);
+      setAlreadyMinted(hasMinted);
+      console.log(`Mint status for ${address}:`, hasMinted);
+    } catch (error) {
+      console.error("Error checking mint status:", error);
+    }
+  }
+
   async function connectWallet() {
     try {
       const ethereum = getEthereum();
@@ -330,6 +348,7 @@ export default function Home() {
         const address = await signer.getAddress();
         
         setWallet(address);
+        checkMintStatus(address);
         
         // Sync to backend
         fetch("/api/connect-wallet", {
@@ -358,6 +377,7 @@ export default function Home() {
 
       const account = accounts[0];
       setWallet(account);
+      checkMintStatus(account);
 
       fetch("/api/connect-wallet", {
         method: "POST",
@@ -967,6 +987,21 @@ export default function Home() {
                   <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-purple-500/5 to-pink-500/5 pointer-events-none"></div>
                 </div>
 
+                {/* Mint Status for Returning Users */}
+                {wallet && alreadyMinted && (
+                  <div className="mb-6 p-4 bg-gradient-to-r from-emerald-500/10 to-green-500/10 border border-emerald-400/30 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">✅</span>
+                      <div className="text-left">
+                        <p className="text-emerald-300 font-semibold">Your Soulbound Identity is Active</p>
+                        <a href={`https://sepolia.etherscan.io/address/${wallet}`} target="_blank" rel="noopener noreferrer" className="text-emerald-200 text-sm hover:underline">
+                          View on Etherscan →
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
@@ -1170,35 +1205,65 @@ export default function Home() {
                   Mint a unique soulbound NFT that represents your AI Twin. This NFT is permanently bound to your identity.
                 </p>
                 
-                {/* Green badge */}
-                <div className="mb-4 inline-block">
-                  <div className="bg-gradient-to-r from-emerald-400/20 to-green-400/20 border border-emerald-400/50 rounded-full px-4 py-2">
-                    <span className="text-emerald-300 font-semibold">✨ Currently FREE on Sepolia Testnet</span>
-                  </div>
-                </div>
-                
-                {/* Grey subtext */}
-                <div className="text-gray-500 text-sm mb-8">
-                  On mainnet launch — one-time gas fee only, yours forever
-                </div>
+                {alreadyMinted ? (
+                  <>
+                    {/* Already minted badge */}
+                    <div className="mb-6 inline-block">
+                      <div className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-400 rounded-full px-6 py-3">
+                        <span className="text-emerald-300 font-bold text-lg">✅ Soulbound Identity Active</span>
+                        <p className="text-emerald-200 text-sm mt-1">Token already minted to your wallet</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-4 justify-center mb-6">
+                      <a
+                        href={`https://sepolia.etherscan.io/address/${wallet}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-8 py-3 bg-gradient-to-r from-emerald-600 to-green-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
+                      >
+                        View on Etherscan
+                      </a>
+                      <button
+                        onClick={() => setOnboardingStep(3)}
+                        className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all duration-300"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Not minted badge */}
+                    <div className="mb-4 inline-block">
+                      <div className="bg-gradient-to-r from-emerald-400/20 to-green-400/20 border border-emerald-400/50 rounded-full px-4 py-2">
+                        <span className="text-emerald-300 font-semibold">✨ Currently FREE on Sepolia Testnet</span>
+                      </div>
+                    </div>
+                    
+                    {/* Grey subtext */}
+                    <div className="text-gray-500 text-sm mb-8">
+                      On mainnet launch — one-time gas fee only, yours forever
+                    </div>
 
-                <div className="flex gap-4 justify-center mb-6">
-                  <button
-                    onClick={() => {
-                      handleMint();
-                      setTimeout(() => setOnboardingStep(3), 500);
-                    }}
-                    className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
-                  >
-                    Mint NFT
-                  </button>
-                  <button
-                    onClick={() => setOnboardingStep(1)}
-                    className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all duration-300"
-                  >
-                    Back
-                  </button>
-                </div>
+                    <div className="flex gap-4 justify-center mb-6">
+                      <button
+                        onClick={() => {
+                          handleMint();
+                          setTimeout(() => setOnboardingStep(3), 500);
+                        }}
+                        className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:scale-105 transition-all duration-300 shadow-lg"
+                      >
+                        Mint NFT
+                      </button>
+                      <button
+                        onClick={() => setOnboardingStep(1)}
+                        className="px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all duration-300"
+                      >
+                        Back
+                      </button>
+                    </div>
+                  </>
+                )}
 
                 {/* Disclaimer */}
                 <p className="text-xs text-gray-400 max-w-md mx-auto">
