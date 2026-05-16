@@ -324,11 +324,29 @@ export default function Home() {
       const contractAddress = "0x071e36df9cD6293e69F8bB19be17557c00839E32";
       const SoulboundNFT = new Contract(contractAddress, SoulboundNFTABI.abi, provider);
 
-      const hasMinted = await SoulboundNFT.hasMinted(address);
-      setAlreadyMinted(hasMinted);
-      console.log(`Mint status for ${address}:`, hasMinted);
+      try {
+        // Primary method: Try hasMinted mapping getter
+        const hasMinted = await SoulboundNFT.hasMinted(address);
+        setAlreadyMinted(!!hasMinted);
+        console.log(`Mint status for ${address}:`, !!hasMinted);
+      } catch (decodeError) {
+        // Fallback: If hasMinted fails (decode error), use balanceOf
+        console.warn("hasMinted call failed, using balanceOf fallback:", decodeError.message);
+        
+        try {
+          const balance = await SoulboundNFT.balanceOf(address);
+          const hasTokens = balance > 0n; // BigInt comparison
+          setAlreadyMinted(hasTokens);
+          console.log(`Mint status (via balanceOf) for ${address}:`, hasTokens);
+        } catch (balanceError) {
+          // If both fail, default to false (safer assumption)
+          console.error("Both hasMinted and balanceOf failed:", balanceError.message);
+          setAlreadyMinted(false);
+        }
+      }
     } catch (error) {
       console.error("Error checking mint status:", error);
+      setAlreadyMinted(false);
     }
   }
 
