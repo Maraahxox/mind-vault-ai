@@ -6,6 +6,9 @@ import { BrowserProvider, Contract } from "ethers";
 import { DEMO_WALLET, demoVaultEntries, demoAIResponses, demoAnalytics } from "@/lib/demoData";
 import SoulboundNFTABI from "@/artifacts/contracts/SoulboundNFT_v1_1.sol/SoulboundNFT_v1_1.json";
 
+const SEPOLIA_CHAIN_ID_DECIMAL = 11155111;
+const SEPOLIA_CHAIN_ID_HEX = "0xaa36a7";
+
 export default function Home() {
   const [wallet, setWallet] = useState("");
   const [vaultData, setVaultData] = useState("");
@@ -324,26 +327,9 @@ export default function Home() {
       const contractAddress = "0x071e36df9cD6293e69F8bB19be17557c00839E32";
       const SoulboundNFT = new Contract(contractAddress, SoulboundNFTABI.abi, provider);
 
-      try {
-        // Primary method: Try hasMinted mapping getter
-        const hasMinted = await SoulboundNFT.hasMinted(address);
-        setAlreadyMinted(!!hasMinted);
-        console.log(`Mint status for ${address}:`, !!hasMinted);
-      } catch (decodeError) {
-        // Fallback: If hasMinted fails (decode error), use balanceOf
-        console.warn("hasMinted call failed, using balanceOf fallback:", decodeError.message);
-        
-        try {
-          const balance = await SoulboundNFT.balanceOf(address);
-          const hasTokens = balance > 0n; // BigInt comparison
-          setAlreadyMinted(hasTokens);
-          console.log(`Mint status (via balanceOf) for ${address}:`, hasTokens);
-        } catch (balanceError) {
-          // If both fail, default to false (safer assumption)
-          console.error("Both hasMinted and balanceOf failed:", balanceError.message);
-          setAlreadyMinted(false);
-        }
-      }
+      const hasMinted = await SoulboundNFT.hasMinted(address);
+      setAlreadyMinted(!!hasMinted);
+      console.log(`Mint status for ${address}:`, !!hasMinted);
     } catch (error) {
       console.error("Error checking mint status:", error);
       setAlreadyMinted(false);
@@ -560,6 +546,30 @@ export default function Home() {
       if (!ethereumProvider) {
         alert("Ethereum provider not found. Please install MetaMask.");
         return;
+      }
+
+      let currentChainHex = await ethereumProvider.request({ method: "eth_chainId" });
+      const currentChainId = Number.parseInt(currentChainHex, 16);
+
+      if (currentChainId !== SEPOLIA_CHAIN_ID_DECIMAL) {
+        try {
+          await ethereumProvider.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: SEPOLIA_CHAIN_ID_HEX }],
+          });
+
+          currentChainHex = await ethereumProvider.request({ method: "eth_chainId" });
+          const switchedChainId = Number.parseInt(currentChainHex, 16);
+
+          if (switchedChainId !== SEPOLIA_CHAIN_ID_DECIMAL) {
+            alert("Please switch to Sepolia Testnet to mint");
+            return;
+          }
+        } catch (switchError) {
+          console.error("Network switch failed:", switchError);
+          alert("Please switch to Sepolia Testnet to mint");
+          return;
+        }
       }
 
       const provider = new BrowserProvider(ethereumProvider);
