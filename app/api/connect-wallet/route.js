@@ -3,6 +3,9 @@ import clientPromise from "@/lib/mongodb";
 import { rateLimit } from "@/lib/rateLimit";
 import { validateWallet } from "@/lib/validation";
 
+// Prevent static generation - this route needs runtime environment variables
+export const dynamic = 'force-dynamic';
+
 export async function POST(req) {
   // Rate limiting
   const rateLimitResult = rateLimit(req);

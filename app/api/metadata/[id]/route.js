@@ -3,6 +3,9 @@ import { MongoClient } from "mongodb";
 import { ethers } from "ethers";
 import { DEMO_WALLET, demoNFTMetadata } from "@/lib/demoData";
 
+// Prevent static generation - this route needs runtime environment variables
+export const dynamic = 'force-dynamic';
+
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri);
 

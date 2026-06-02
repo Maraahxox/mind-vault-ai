@@ -5,6 +5,9 @@ import { rateLimit } from "@/lib/rateLimit";
 import { validateWallet } from "@/lib/validation";
 import { DEMO_WALLET, demoVaultEntries } from "@/lib/demoData";
 
+// Prevent static generation - this route needs runtime environment variables
+export const dynamic = 'force-dynamic';
+
 let cachedClient = null;
 async function getClient() {
   if (!cachedClient) {

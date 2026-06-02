@@ -7,6 +7,9 @@ import { generateRAGResponse } from "@/lib/aiTwin";
 import { decryptData } from "@/lib/encryption";
 import { DEMO_WALLET, demoAIResponses } from "@/lib/demoData";
 
+// Prevent static generation - this route needs runtime environment variables
+export const dynamic = 'force-dynamic';
+
 export async function POST(req) {
   // Rate limiting
   const rateLimitResult = rateLimit(req);

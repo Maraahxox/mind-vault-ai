@@ -6,6 +6,9 @@ import clientPromise from "@/lib/mongodb";
 import { generateEmbedding } from "@/lib/embeddings";
 import { DEMO_WALLET } from "@/lib/demoData";
 
+// Prevent static generation - this route needs runtime environment variables
+export const dynamic = 'force-dynamic';
+
 export async function POST(req) {
   // Rate limiting
   const rateLimitResult = rateLimit(req);

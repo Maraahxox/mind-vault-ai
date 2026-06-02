@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { demoAnalytics } from "@/lib/demoData";
 
+// Prevent static generation - this route needs runtime environment variables
+export const dynamic = 'force-dynamic';
+
 export async function GET(req) {
   try {
     const client = await clientPromise;
