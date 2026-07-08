@@ -637,12 +637,12 @@ export default function Home() {
       <main className="relative z-10 min-h-screen">
         {/* Enhanced Navbar */}
         <header className="bg-black/20 backdrop-blur-md fixed w-full top-0 z-50 border-b border-purple-500/20">
-          <nav className="max-w-7xl mx-auto flex items-center justify-between py-4 px-6 animate-fade-in">
+          <nav className="max-w-7xl mx-auto flex items-center justify-between h-16 py-0 px-6 animate-fade-in">
             <div className="flex items-center gap-6">
-              <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-purple-500 to-pink-400 drop-shadow-[0_0_12px_rgba(168,85,247,0.9)] animate-neon-flicker hover:scale-105 transition-transform">
+              <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-purple-500 to-pink-400 drop-shadow-[0_0_10px_rgba(168,85,247,0.9)] animate-neon-flicker hover:scale-105 transition-transform">
                 🧠 Mind Vault
               </div>
-              <ul className="hidden lg:flex gap-8 text-sm text-gray-200">
+              <ul className="hidden lg:flex gap-6 text-sm text-gray-200 items-center">
                 <li><a href="#features" className="hover:text-purple-300 transition-all duration-300 hover:scale-110 relative group">Features
                   <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-gradient-to-r from-purple-400 to-pink-400 transition-all duration-300 group-hover:w-full"></span>
                 </a></li>
@@ -661,10 +661,10 @@ export default function Home() {
               </ul>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <button
                 onClick={connectWallet}
-                className="hidden sm:inline-flex items-center gap-2 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500 text-black px-6 py-2.5 rounded-full font-bold shadow-2xl hover:shadow-emerald-500/50 hover:scale-105 transition-all duration-300 animate-pulse-glow border border-emerald-300/50"
+                className="hidden sm:inline-flex items-center gap-2 bg-gradient-to-r from-emerald-400 via-green-500 to-teal-500 text-black px-4 py-2 rounded-full text-sm font-semibold shadow-lg hover:shadow-emerald-500/50 hover:scale-105 transition-all duration-300 border border-emerald-300/50"
               >
                 <span className="text-lg">🔗</span>
                 {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : "Connect Wallet"}
